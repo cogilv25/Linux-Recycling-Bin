@@ -1,0 +1,66 @@
+#!/bin/sh
+
+#These are used so I don't have to type the
+#paths to log and dustbin everywhere and to make
+#changing their locations/names easy if needed
+dustbin="/root/Dustbin"
+log="$dustbin/.log.asetnweu"
+
+
+#If there are no Arguments or the user types del --help
+#display a message explaining how to use the script
+if [ $# == 0 ] || [ "$1" == "--help" ]
+then
+	echo "Usage: del <filepath> [filepath] [...]"
+	exit
+fi
+
+
+#create the dustbin if it doesn't exist
+if [ ! -e $dustbin ]
+then
+	mkdir $dustbin
+fi
+
+#create the Dustbin's log if it doesn't exist
+if [ ! -e $log ]
+then
+	echo -n > $log
+fi
+
+#for each argument passed into the script do
+for i in "$@"
+do
+	#Stop the user from deleting the Dustbin or log and prevent
+	#errors that could occur if this was done
+	if [ "$i" == ".log.asetnweu" ] || [ "$i" == "Dustbin" ]
+	then
+		echo del: $i: Reserved name: Rename your file or directory 
+	else
+		#If the file doesn't exist tell the
+		#user and move onto the next argument
+		if [ ! -e "$i" ]
+		then
+			echo del: $i: No such file or directory
+		else
+			#get the absolute path of the file
+			location=`readlink -f "$i"`
+			#get the file name if given a path
+			i=`basename "$i"`
+			#If the file is in log delete the line
+			#containing it. t catches the value from grep
+			t=$(grep "$i /" $log)
+			if [ $? == 0 ]
+			then
+				sed -i '\,'"$i"',d' $log
+			fi
+			#add a line to log that reads
+			#<file name> <absolute path>
+			echo "$i $location" >> $log
+			#move the file into the dustbin
+			mv -f "$location" $dustbin
+			#notify the user the file has been deleted
+			echo del: $i: File or directory deleted
+		fi
+	fi
+done

@@ -1,0 +1,77 @@
+#!/bin/sh
+
+#these are used so I don't have to type the
+#paths to log and dustbin everywhere and to make
+#changing their locations/names easy if needed
+dustbin="/root/Dustbin"
+log="$dustbin/.log.asetnweu"
+
+
+#If there are no Arguments or the user types del --help
+#display a message explaining how to use the script
+if [ $# -eq 0 ] || [ "$1" == "--help" ]
+then
+	echo "Usage: restore <filename> [filepath] [...]"
+	exit
+fi
+
+
+#If the log doesn't exist tell the user and exit
+if [ ! -e "$log" ]
+then
+	echo restore: No files to restore: Dustbin is empty
+	exit
+fi
+
+#If the log is empty tell the user and exit t catches the
+#value returned by grep
+t=$(grep "/root" "$log")
+if [ $? != 0 ]
+then
+	echo restore: No files to restore: Dustbin is empty
+	exit
+fi
+
+
+#Make dustbin the present working directory
+cd $dustbin
+
+#for each argument passed into the script do
+for i in "$@"
+do
+	#get the file name if given a path
+	i=`basename "$i"`
+	
+	#If the file doesn't exist in the dustbin or
+	#the user attempts to restore the log tell
+	#them the file doesn't exist
+	if [ ! -e "$i" ] || [ "$i" == "$log" ]
+	then
+		echo restore: $i: No such file or directory in dustbin 
+		exit
+	fi
+	
+	#get the absolute path and absolute directory
+	abs=$(grep -oh "/.*$i$" "$log")
+	directory=`echo "$abs" | grep -oh "/.*/"`
+	
+	#If a file exists with the same path as the file
+	#being restored append .bak to the file when
+	#it is restored other wise restore it normally
+	if [ ! -e "$abs" ]
+	then
+		#if the directory doesn't exist create it
+		if [ ! -e "$directory" ]
+		then
+			mkdir -p "$directory"
+		fi
+		mv "$i" "$abs"
+	else
+		mv "$i" "$abs.bak" 
+	fi 
+	
+	#Remove the file's entry in the log
+	sed -i '\,'"$abs$"',d' "$log"
+	#notify the user the file has been restored
+	echo restore: $i: File or directory restored
+done
